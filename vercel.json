@@ -14,7 +14,7 @@
     ],
     "env": {
         "PYTHONPATH": ".",
-        "MAX_EXECUTION_TIME": "30",
+        "MAX_EXECUTION_TIME": "360",
         "MEMORY_ALLOCATION": "1024"
     }
 }
