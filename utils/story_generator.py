@@ -6,6 +6,7 @@ from .reference_processor import ReferenceProcessor
 from .prompt_manager import PromptManager
 import time
 import json
+import asyncio
 
 class StoryGenerator:
     def __init__(self, model_name: str = 'gemini-2.0-flash-exp', api_key: Optional[str] = None):
@@ -16,6 +17,8 @@ class StoryGenerator:
         self.api_key = api_key
         self.reference_processor = ReferenceProcessor(self.model)
         self.prompt_manager = PromptManager()
+        self.max_retries = 2  # Reduced retries for faster response
+        self.chunk_size = 1500  # Smaller chunks for faster processing
 
     def validate_inputs(self, expertise: str, tone: str):
         if expertise not in EXPERTISE_LEVELS:
@@ -23,24 +26,24 @@ class StoryGenerator:
         if tone not in TONE_STYLES:
             raise ValueError(f"Tone style '{tone}' not supported")
 
-    def safe_generate_content(self, prompt: str, max_retries: int = 3) -> str:
-        """Safely generate content with retry logic and error handling."""
-        for attempt in range(max_retries):
+    async def safe_generate_content(self, prompt: str) -> str:
+        """Asynchronously generate content with optimized retry logic."""
+        for attempt in range(self.max_retries):
             try:
                 response = self.model.generate_content(prompt)
                 if not response or not response.text:
                     raise ValueError("Empty response received")
                 return response.text.strip()
             except Exception as e:
-                if attempt == max_retries - 1:
+                if attempt == self.max_retries - 1:
                     return json.dumps({"error": f"Failed to generate content: {str(e)}"})
-                time.sleep(2)  # Wait before retrying
+                await asyncio.sleep(1)  # Reduced wait time
         
         return json.dumps({"error": "Failed to generate content after multiple attempts"})
 
-    def process_long_content(self, content: str, max_length: int = 2000) -> str:
-        """Process long content into manageable chunks."""
-        if len(content) <= max_length:
+    def process_long_content(self, content: str) -> str:
+        """Process long content into smaller chunks."""
+        if len(content) <= self.chunk_size:
             return content
 
         chunks = []
@@ -48,7 +51,7 @@ class StoryGenerator:
         paragraphs = content.split('\n\n')
 
         for paragraph in paragraphs:
-            if len(current_chunk) + len(paragraph) + 2 <= max_length:
+            if len(current_chunk) + len(paragraph) + 2 <= self.chunk_size:
                 current_chunk += ('\n\n' + paragraph if current_chunk else paragraph)
             else:
                 if current_chunk:
@@ -58,9 +61,9 @@ class StoryGenerator:
         if current_chunk:
             chunks.append(current_chunk)
 
-        return '\n\n'.join(chunks)
+        return '\n\n'.join(chunks[:3])  # Limit to first 3 chunks for faster response
 
-    def generate_story_chunk(
+    async def generate_story_chunk(
         self,
         topic: str,
         expertise: str,
@@ -76,34 +79,8 @@ class StoryGenerator:
         try:
             self.validate_inputs(expertise, tone)
             
-            # Process YouTube references if provided
+            # Skip YouTube processing in Vercel environment
             youtube_content = ""
-            if youtube_urls:
-                youtube_content = self.reference_processor.process_youtube_references(youtube_urls)
-                if youtube_content and not youtube_content.startswith('Error'):
-                    integration_prompt = f"""
-                    Integrate the following reference material with the topic "{topic}":
-
-                    Reference Material:
-                    {youtube_content}
-
-                    Create a comprehensive context that:
-                    1. Combines insights from the reference material
-                    2. Relates directly to the main topic
-                    3. Preserves specific details and examples
-                    4. Maintains technical accuracy
-                    5. Incorporates expert perspectives
-
-                    Format as additional context that enhances the main topic discussion.
-                    """
-                    
-                    try:
-                        integrated_content = self.safe_generate_content(integration_prompt)
-                        if not integrated_content.startswith('{"error"'):
-                            context = (f"{context}\n\n--- Additional References ---\n{integrated_content}"
-                                     if context else integrated_content)
-                    except Exception as e:
-                        print(f"Error integrating YouTube content: {str(e)}")
             
             # Get custom prompt if specified
             custom_prompt = self.prompt_manager.get_prompt(prompt_id)
@@ -122,7 +99,7 @@ class StoryGenerator:
                 )
 
             # Generate content with safety checks
-            content = self.safe_generate_content(prompt)
+            content = await self.safe_generate_content(prompt)
             
             # Check if there was an error
             try:
@@ -139,38 +116,40 @@ class StoryGenerator:
         except Exception as e:
             return json.dumps({"error": f"Error generating story part {part_number}: {str(e)}"})
 
-    def generate_complete_story(
+    async def generate_complete_story(
         self,
         topic: str,
         expertise: str,
         tone: str,
         context: Optional[str] = None,
         youtube_urls: Optional[List[str]] = None,
-        total_parts: int = 3,
+        total_parts: int = 2,  # Reduced default parts
         prompt_id: str = 'default',
         writing_style: str = 'balanced'
     ) -> str:
         story_parts = []
         summaries = []
 
+        # Limit total parts in Vercel environment
+        total_parts = min(total_parts, 2)
+
         for part in range(1, total_parts + 1):
-            chunk = self.generate_story_chunk(
+            chunk = await self.generate_story_chunk(
                 topic, expertise, tone, context, youtube_urls,
                 part, total_parts, summaries, prompt_id, writing_style
             )
             
-            # Check if the chunk is an error message
             try:
                 error_check = json.loads(chunk)
                 if isinstance(error_check, dict) and 'error' in error_check:
                     return json.dumps({"error": error_check['error']})
             except json.JSONDecodeError:
-                # Not an error message, continue processing
                 story_parts.append(chunk)
 
             if part < total_parts:
-                summary = generate_summary(chunk, self.model)
-                summaries.append(summary)
-                time.sleep(2)  # Add small delay between requests
+                summary = await self.safe_generate_content(f"Summarize briefly: {chunk}")
+                if not summary.startswith('{"error"'):
+                    summaries.append(summary)
+                await asyncio.sleep(1)
 
         return "\n\n".join(story_parts)
