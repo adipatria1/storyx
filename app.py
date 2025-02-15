@@ -5,6 +5,8 @@ from utils.prompt_routes import prompt_routes
 from utils.prompt_preview import prompt_preview
 from dotenv import load_dotenv
 import os
+import asyncio
+import io
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
@@ -43,7 +45,7 @@ def setup():
     return render_template('setup.html')
 
 @app.route('/generate', methods=['POST'])
-def generate_story():
+async def generate_story():
     try:
         api_key = get_api_key()
         if not api_key:
@@ -58,7 +60,7 @@ def generate_story():
         tone = data.get('tone')
         context = data.get('context', '')
         youtube_urls = data.get('youtube_urls', [])
-        total_parts = int(data.get('total_parts', 3))
+        total_parts = min(int(data.get('total_parts', 2)), 2)  # Limit parts
         prompt_id = data.get('prompt_id', 'default')
         writing_style = data.get('writing_style', 'balanced')
 
@@ -68,7 +70,7 @@ def generate_story():
             }), 400
 
         generator = StoryGenerator(model_name, api_key)
-        story = generator.generate_complete_story(
+        story = await generator.generate_complete_story(
             topic=topic,
             expertise=expertise,
             tone=tone,
@@ -78,6 +80,13 @@ def generate_story():
             prompt_id=prompt_id,
             writing_style=writing_style
         )
+
+        try:
+            error_check = json.loads(story)
+            if isinstance(error_check, dict) and 'error' in error_check:
+                return jsonify({'error': error_check['error']}), 500
+        except json.JSONDecodeError:
+            pass
 
         return jsonify({
             'success': True,
