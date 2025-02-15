@@ -13,12 +13,8 @@
         }
     ],
     "env": {
-        "PYTHONPATH": "."
-    },
-    "functions": {
-        "app.py": {
-            "memory": 1024,
-            "maxDuration": 30
-        }
+        "PYTHONPATH": ".",
+        "MAX_EXECUTION_TIME": "30",
+        "MEMORY_ALLOCATION": "1024"
     }
 }
