@@ -5,6 +5,7 @@ from .summary_generator import generate_summary
 from .reference_processor import ReferenceProcessor
 from .prompt_manager import PromptManager
 import time
+import json
 
 class StoryGenerator:
     def __init__(self, model_name: str = 'gemini-2.0-flash-exp', api_key: Optional[str] = None):
@@ -22,37 +23,42 @@ class StoryGenerator:
         if tone not in TONE_STYLES:
             raise ValueError(f"Tone style '{tone}' not supported")
 
-    def generate_with_retry(self, prompt: str, max_retries: int = 3, chunk_size: int = 2000) -> str:
-        """Generate content with retry logic and chunking for longer content."""
+    def safe_generate_content(self, prompt: str, max_retries: int = 3) -> str:
+        """Safely generate content with retry logic and error handling."""
         for attempt in range(max_retries):
             try:
                 response = self.model.generate_content(prompt)
-                content = response.text
-                
-                # If content is too long, break it into chunks
-                if len(content) > chunk_size:
-                    chunks = []
-                    current_chunk = ""
-                    
-                    for paragraph in content.split('\n\n'):
-                        if len(current_chunk) + len(paragraph) > chunk_size:
-                            chunks.append(current_chunk)
-                            current_chunk = paragraph
-                        else:
-                            current_chunk += '\n\n' + paragraph if current_chunk else paragraph
-                    
-                    if current_chunk:
-                        chunks.append(current_chunk)
-                    
-                    return '\n\n'.join(chunks)
-                
-                return content
+                if not response or not response.text:
+                    raise ValueError("Empty response received")
+                return response.text.strip()
             except Exception as e:
                 if attempt == max_retries - 1:
-                    return f"Error generating content after {max_retries} attempts: {str(e)}"
+                    return json.dumps({"error": f"Failed to generate content: {str(e)}"})
                 time.sleep(2)  # Wait before retrying
         
-        return "Failed to generate content after multiple attempts"
+        return json.dumps({"error": "Failed to generate content after multiple attempts"})
+
+    def process_long_content(self, content: str, max_length: int = 2000) -> str:
+        """Process long content into manageable chunks."""
+        if len(content) <= max_length:
+            return content
+
+        chunks = []
+        current_chunk = ""
+        paragraphs = content.split('\n\n')
+
+        for paragraph in paragraphs:
+            if len(current_chunk) + len(paragraph) + 2 <= max_length:
+                current_chunk += ('\n\n' + paragraph if current_chunk else paragraph)
+            else:
+                if current_chunk:
+                    chunks.append(current_chunk)
+                current_chunk = paragraph
+
+        if current_chunk:
+            chunks.append(current_chunk)
+
+        return '\n\n'.join(chunks)
 
     def generate_story_chunk(
         self,
@@ -92,9 +98,10 @@ class StoryGenerator:
                     """
                     
                     try:
-                        integrated_content = self.generate_with_retry(integration_prompt)
-                        context = (f"{context}\n\n--- Additional References ---\n{integrated_content}"
-                                 if context else integrated_content)
+                        integrated_content = self.safe_generate_content(integration_prompt)
+                        if not integrated_content.startswith('{"error"'):
+                            context = (f"{context}\n\n--- Additional References ---\n{integrated_content}"
+                                     if context else integrated_content)
                     except Exception as e:
                         print(f"Error integrating YouTube content: {str(e)}")
             
@@ -113,10 +120,24 @@ class StoryGenerator:
                     part_number, total_parts, previous_parts,
                     writing_style=writing_style
                 )
-                
-            return self.generate_with_retry(prompt)
+
+            # Generate content with safety checks
+            content = self.safe_generate_content(prompt)
+            
+            # Check if there was an error
+            try:
+                error_check = json.loads(content)
+                if isinstance(error_check, dict) and 'error' in error_check:
+                    return error_check['error']
+            except json.JSONDecodeError:
+                # Not an error message, continue processing
+                pass
+
+            # Process long content if needed
+            return self.process_long_content(content)
+
         except Exception as e:
-            return f"Error generating story part {part_number}: {str(e)}"
+            return json.dumps({"error": f"Error generating story part {part_number}: {str(e)}"})
 
     def generate_complete_story(
         self,
@@ -137,7 +158,15 @@ class StoryGenerator:
                 topic, expertise, tone, context, youtube_urls,
                 part, total_parts, summaries, prompt_id, writing_style
             )
-            story_parts.append(chunk)
+            
+            # Check if the chunk is an error message
+            try:
+                error_check = json.loads(chunk)
+                if isinstance(error_check, dict) and 'error' in error_check:
+                    return json.dumps({"error": error_check['error']})
+            except json.JSONDecodeError:
+                # Not an error message, continue processing
+                story_parts.append(chunk)
 
             if part < total_parts:
                 summary = generate_summary(chunk, self.model)
