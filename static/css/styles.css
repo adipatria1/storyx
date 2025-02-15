@@ -1,0 +1,69 @@
+/* Custom styles for the application */
+.pre-wrap {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+/* Custom scrollbar styles */
+pre::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+pre::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+pre::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+pre::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Spinner animation */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* Form element focus states */
+.focus-ring {
+    transition: all 0.2s ease-in-out;
+}
+
+.focus-ring:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.5);
+}
+
+/* Button hover effects */
+.hover-transform {
+    transition: transform 0.2s ease-in-out;
+}
+
+.hover-transform:hover {
+    transform: translateY(-1px);
+}
+
+/* Toast notification custom styles */
+.Toastify__toast {
+    border-radius: 8px;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+.Toastify__toast--success {
+    background: #10B981;
+}
+
+.Toastify__toast--error {
+    background: #EF4444;
+}

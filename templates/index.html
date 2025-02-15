@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Story Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <style>
+        .dark {
+            color-scheme: dark;
+        }
+        
+        .theme-transition {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        }
+        
+        .glass-card {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="min-h-screen theme-transition dark:bg-gray-900">
+    <!-- Theme Toggle -->
+    <div class="fixed top-4 right-4 z-50">
+        <button onclick="toggleTheme()" class="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+            <svg id="sun-icon" class="w-6 h-6 text-yellow-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+            </svg>
+            <svg id="moon-icon" class="w-6 h-6 text-blue-500 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+            </svg>
+        </button>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- Gradient Header -->
+        <div class="gradient-bg text-white p-8 rounded-2xl mb-8 shadow-lg">
+            <h1 class="text-4xl font-bold text-center mb-2">AI Story Generator</h1>
+            <p class="text-center text-gray-100 opacity-90">Transform your ideas into compelling stories with AI</p>
+        </div>
+        
+        <div class="max-w-4xl mx-auto glass-card bg-white dark:bg-gray-800 bg-opacity-90 dark:bg-opacity-90 rounded-xl shadow-xl p-8 border border-gray-200 dark:border-gray-700">
+            <form id="storyForm" class="space-y-6">
+                <!-- Topic Input -->
+                <div class="group">
+                    <label for="topic" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Topic</label>
+                    <input type="text" id="topic" name="topic" required
+                           class="block w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-colors"
+                           placeholder="Enter your topic">
+                </div>
+
+                <!-- Model Selection -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="model" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Model</label>
+                        <select id="model" name="model" required
+                                class="block w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-colors">
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="expertise" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Expertise Level</label>
+                        <select id="expertise" name="expertise" required
+                                class="block w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-colors">
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="tone" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Tone</label>
+                        <select id="tone" name="tone" required
+                                class="block w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-colors">
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="writingStyle" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Writing Style</label>
+                        <select id="writingStyle" name="writingStyle" required
+                                class="block w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-colors">
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Context -->
+                <div>
+                    <label for="context" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Additional Context (Optional)</label>
+                    <textarea id="context" name="context" rows="3"
+                              class="block w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-colors"
+                              placeholder="Enter any additional context"></textarea>
+                </div>
+
+                <!-- YouTube URLs -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">YouTube References (Optional)</label>
+                    <div id="youtubeUrls" class="space-y-3">
+                        <div class="flex gap-2">
+                            <input type="url" 
+                                   class="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-colors"
+                                   placeholder="Enter YouTube URL">
+                            <button type="button" onclick="addYouTubeField()"
+                                    class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors">
+                                Add More
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parts Selection -->
+                <div>
+                    <label for="total_parts" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Number of Parts: <span id="partsValue" class="text-indigo-600 dark:text-indigo-400">3</span>
+                    </label>
+                    <input type="range" id="total_parts" name="total_parts" 
+                           min="1" max="5" value="3" step="1"
+                           class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                           oninput="document.getElementById('partsValue').textContent = this.value">
+                </div>
+
+                <!-- Prompt Template -->
+                <div>
+                    <label for="promptTemplate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Prompt Template</label>
+                    <div class="flex gap-2">
+                        <select id="promptTemplate" name="promptTemplate" required
+                                class="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-colors">
+                        </select>
+                        <button type="button" onclick="showPromptModal('new')"
+                                class="px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 transition-colors">
+                            New
+                        </button>
+                        <button type="button" onclick="showPromptModal('edit')"
+                                class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors">
+                            Edit
+                        </button>
+                        <button type="button" onclick="deletePrompt()"
+                                class="px-4 py-2 bg-red-600 dark:bg-red-500 text-white rounded-lg hover:bg-red-700 dark:hover:bg-red-600 transition-colors">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Generate Button -->
+                <div>
+                    <button type="submit" id="generateBtn"
+                            class="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-lg text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900 transition-all transform hover:scale-[1.02]">
+                        <span id="generateBtnText" class="text-lg font-medium">Generate Story</span>
+                        <svg id="generateSpinner" class="animate-spin ml-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Story Output -->
+            <div id="storyOutput" class="mt-8 hidden">
+                <h2 class="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Generated Story</h2>
+                <div class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg border border-gray-200 dark:border-gray-600">
+                    <pre id="storyContent" class="whitespace-pre-wrap font-sans text-gray-800 dark:text-gray-200"></pre>
+                </div>
+                <div class="mt-4">
+                    <button id="downloadBtn"
+                            class="flex items-center justify-center py-3 px-4 rounded-lg text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 dark:focus:ring-offset-gray-900 transition-all transform hover:scale-[1.02]">
+                        <span class="text-lg font-medium">Download Story</span>
+                        <svg id="downloadSpinner" class="animate-spin ml-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prompt Template Modal -->
+    <div id="promptModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-6 border w-3/4 shadow-xl rounded-xl bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+            <div class="mt-3">
+                <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-4" id="modalTitle">Add New Prompt Template</h3>
+                <form id="promptForm" class="space-y-4">
+                    <input type="hidden" id="promptId" name="promptId">
+                    <div>
+                        <label for="promptName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Template Name</label>
+                        <input type="text" id="promptName" name="promptName" required
+                               class="block w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-colors">
+                    </div>
+                    <div>
+                        <label for="promptTemplate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Template Content</label>
+                        <button type="button" onclick="useExampleTemplate()"
+                                class="mb-3 px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                            Use Example Template
+                        </button>
+                        <textarea id="promptContent" name="promptContent" rows="10" required
+                                  class="block w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-colors"
+                                  placeholder="Enter your prompt template"></textarea>
+                    </div>
+                    <div class="flex justify-end gap-3">
+                        <button type="button" onclick="closePromptModal()"
+                                class="px-6 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-colors">
+                            Save
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize form elements with data from the server
+        const AVAILABLE_MODELS = {{ models|tojson|safe }};
+        const EXPERTISE_LEVELS = {{ expertise_levels|tojson|safe }};
+        const TONE_STYLES = {{ tone_styles|tojson|safe }};
+        const WRITING_STYLES = {{ writing_styles|tojson|safe }};
+
+        const EXAMPLE_TEMPLATE = `Generate part {part_number} of {total_parts} discussing this topic: {topic}
+Category: {topic_category}
+{context_text}
+{previous_context}
+
+Writing Guidelines:
+- Write as a {expertise}: {expertise_instructions}
+- Use a {tone} tone: {tone_instructions}
+
+Category-Specific Guidelines:
+{category_instructions}
+
+General Requirements:
+- Focus on accuracy and relevance
+- Include specific examples and references
+- Consider multiple perspectives
+- Support statements with evidence
+- Address potential questions or concerns
+- Provide practical insights when applicable
+
+Structure Requirements:
+- Minimum length: 4000 characters
+- Use clear paragraphs and transitions
+- Include relevant data when applicable
+- Balance theory and practice
+- Maintain professional yet accessible language
+- Format for easy reading and comprehension`;
+
+        // Theme management
+        function initTheme() {
+            const isDark = localStorage.getItem('theme') === 'dark' || 
+                          (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            
+            document.documentElement.classList.toggle('dark', isDark);
+            updateThemeIcons(isDark);
+        }
+
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcons(isDark);
+        }
+
+        function updateThemeIcons(isDark) {
+            document.getElementById('moon-icon').classList.toggle('hidden', isDark);
+            document.getElementById('sun-icon').classList.toggle('hidden', !isDark);
+        }
+
+        function initializeForm() {
+            // Populate model select
+            const modelSelect = document.getElementById('model');
+            modelSelect.innerHTML = '<option value="">Select a model</option>';
+            AVAILABLE_MODELS.forEach(model => {
+                const option = new Option(model, model);
+                modelSelect.add(option);
+            });
+
+            // Populate expertise select
+            const expertiseSelect = document.getElementById('expertise');
+            expertiseSelect.innerHTML = '<option value="">Select expertise level</option>';
+            EXPERTISE_LEVELS.forEach(level => {
+                const option = new Option(level, level);
+                expertiseSelect.add(option);
+            });
+
+            // Populate tone select
+            const toneSelect = document.getElementById('tone');
+            toneSelect.innerHTML = '<option value="">Select tone style</option>';
+            TONE_STYLES.forEach(style => {
+                const option = new Option(style, style);
+                toneSelect.add(option);
+            });
+
+            // Populate writing style select
+            const writingStyleSelect = document.getElementById('writingStyle');
+            writingStyleSelect.innerHTML = '<option value="">Select writing style</option>';
+            WRITING_STYLES.forEach(style => {
+                const option = new Option(style, style);
+                writingStyleSelect.add(option);
+            });
+
+            // Load prompt templates
+            loadPrompts();
+        }
+
+        // Load available prompt templates
+        async function loadPrompts() {
+            try {
+                const response = await fetch('/prompts');
+                const prompts = await response.json();
+                const promptSelect = document.getElementById('promptTemplate');
+                promptSelect.innerHTML = ''; // Clear existing options
+                
+                Object.entries(prompts).forEach(([id, prompt]) => {
+                    const option = new Option(prompt.name, id);
+                    promptSelect.add(option);
+                });
+            } catch (error) {
+                showToast('Error loading prompt templates', 'error');
+            }
+        }
+
+        function showPromptModal(mode) {
+            const modal = document.getElementById('promptModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const promptForm = document.getElementById('promptForm');
+            const promptId = document.getElementById('promptId');
+            const promptName = document.getElementById('promptName');
+            const promptContent = document.getElementById('promptContent');
+
+            modal.classList.remove('hidden');
+            
+            if (mode === 'edit') {
+                const selectedId = document.getElementById('promptTemplate').value;
+                if (selectedId === 'default') {
+                    showToast('Cannot edit default template', 'error');
+                    modal.classList.add('hidden');
+                    return;
+                }
+                
+                modalTitle.textContent = 'Edit Prompt Template';
+                fetch(`/prompts/${selectedId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        promptId.value = selectedId;
+                        promptName.value = data.name;
+                        promptContent.value = data.template;
+                    })
+                    .catch(error => {
+                        showToast('Error loading template', 'error');
+                        modal.classList.add('hidden');
+                    });
+            } else {
+                modalTitle.textContent = 'Add New Prompt Template';
+                promptForm.reset();
+                promptId.value = '';
+            }
+        }
+
+        function useExampleTemplate() {
+            document.getElementById('promptContent').value = EXAMPLE_TEMPLATE;
+        }
+
+        function closePromptModal() {
+            document.getElementById('promptModal').classList.add('hidden');
+        }
+
+        function deletePrompt() {
+            const selectedId = document.getElementById('promptTemplate').value;
+            if (selectedId === 'default') {
+                showToast('Cannot delete default template', 'error');
+                return;
+            }
+
+            if (confirm('Are you sure you want to delete this template?')) {
+                fetch(`/prompts/${selectedId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error('Failed to delete template');
+                    showToast('Template deleted successfully');
+                    loadPrompts();
+                })
+                .catch(error => {
+                    showToast(error.message, 'error');
+                });
+            }
+        }
+
+        function addYouTubeField() {
+            const container = document.getElementById('youtubeUrls');
+            const newField = container.children[0].cloneNode(true);
+            newField.querySelector('input').value = '';
+            container.appendChild(newField);
+        }
+
+        // Form submission handler
+        document.getElementById('storyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const generateBtn = document.getElementById('generateBtn');
+            const generateBtnText = document.getElementById('generateBtnText');
+            const generateSpinner = document.getElementById('generateSpinner');
+            
+            generateBtn.disabled = true;
+            generateBtnText.textContent = 'Generating...';
+            generateSpinner.classList.remove('hidden');
+
+            const youtubeUrls = Array.from(document.querySelectorAll('#youtubeUrls input'))
+                .map(input => input.value)
+                .filter(url => url.trim() !== '');
+
+            const formData = {
+                topic: document.getElementById('topic').value,
+                model: document.getElementById('model').value,
+                expertise: document.getElementById('expertise').value,
+                tone: document.getElementById('tone').value,
+                context: document.getElementById('context').value,
+                youtube_urls: youtubeUrls,
+                total_parts: parseInt(document.getElementById('total_parts').value),
+                prompt_id: document.getElementById('promptTemplate').value,
+                writing_style: document.getElementById('writingStyle').value
+            };
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                document.getElementById('storyContent').textContent = data.story;
+                document.getElementById('storyOutput').classList.remove('hidden');
+
+                showToast('Story generated successfully!');
+
+            } catch (error) {
+                showToast(error.message || 'An error occurred', 'error');
+            } finally {
+                generateBtn.disabled = false;
+                generateBtnText.textContent = 'Generate Story';
+                generateSpinner.classList.add('hidden');
+            }
+        });
+
+        // Handle prompt form submission
+        document.getElementById('promptForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const promptId = document.getElementById('promptId').value;
+            const promptName = document.getElementById('promptName').value;
+            const promptContent = document.getElementById('promptContent').value;
+
+            try {
+                const response = await fetch('/prompts', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt_id: promptId || Date.now().toString(),
+                        name: promptName,
+                        template: promptContent
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save template');
+                }
+
+                showToast('Template saved successfully');
+                closePromptModal();
+                loadPrompts();
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        });
+
+        // Download functionality
+        document.getElementById('downloadBtn').addEventListener('click', async () => {
+            const downloadBtn = document.getElementById('downloadBtn');
+            const downloadSpinner = document.getElementById('downloadSpinner');
+            const story = document.getElementById('storyContent').textContent;
+            
+            try {
+                downloadBtn.disabled = true;
+                downloadSpinner.classList.remove('hidden');
+                
+                const response = await fetch('/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ story })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Download failed');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'generated_story.txt';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+
+            } catch (error) {
+                showToast(error.message || 'Download failed', 'error');
+            } finally {
+                downloadBtn.disabled = false;
+                downloadSpinner.classList.add('hidden');
+            }
+        });
+
+        // Toast Notifications
+        function showToast(message, type = 'success') {
+            Toastify({
+                text: message,
+                duration: 3000,
+                gravity: "top",
+                position: "right",
+                backgroundColor: type === 'success' ? "#10B981" : "#EF4444"
+            }).showToast();
+        }
+
+        // Initialize form and theme on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            initializeForm();
+        });
+    </script>
+</body>
+</html>
