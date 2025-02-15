@@ -10,6 +10,10 @@ app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
 load_dotenv()
 
+# Set Vercel-specific configurations
+app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MEMORY_ALLOCATION', 1024)) * 1024 * 1024  # Convert MB to bytes
+app.config['PERMANENT_SESSION_LIFETIME'] = int(os.getenv('MAX_EXECUTION_TIME', 30))
+
 # Register the blueprints
 app.register_blueprint(prompt_routes)
 app.register_blueprint(prompt_preview)
