@@ -22,6 +22,38 @@ class StoryGenerator:
         if tone not in TONE_STYLES:
             raise ValueError(f"Tone style '{tone}' not supported")
 
+    def generate_with_retry(self, prompt: str, max_retries: int = 3, chunk_size: int = 2000) -> str:
+        """Generate content with retry logic and chunking for longer content."""
+        for attempt in range(max_retries):
+            try:
+                response = self.model.generate_content(prompt)
+                content = response.text
+                
+                # If content is too long, break it into chunks
+                if len(content) > chunk_size:
+                    chunks = []
+                    current_chunk = ""
+                    
+                    for paragraph in content.split('\n\n'):
+                        if len(current_chunk) + len(paragraph) > chunk_size:
+                            chunks.append(current_chunk)
+                            current_chunk = paragraph
+                        else:
+                            current_chunk += '\n\n' + paragraph if current_chunk else paragraph
+                    
+                    if current_chunk:
+                        chunks.append(current_chunk)
+                    
+                    return '\n\n'.join(chunks)
+                
+                return content
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    return f"Error generating content after {max_retries} attempts: {str(e)}"
+                time.sleep(2)  # Wait before retrying
+        
+        return "Failed to generate content after multiple attempts"
+
     def generate_story_chunk(
         self,
         topic: str,
@@ -43,7 +75,6 @@ class StoryGenerator:
             if youtube_urls:
                 youtube_content = self.reference_processor.process_youtube_references(youtube_urls)
                 if youtube_content and not youtube_content.startswith('Error'):
-                    # Create a combined context that integrates YouTube content
                     integration_prompt = f"""
                     Integrate the following reference material with the topic "{topic}":
 
@@ -61,8 +92,7 @@ class StoryGenerator:
                     """
                     
                     try:
-                        integrated_content = self.model.generate_content(integration_prompt).text
-                        # Add the integrated content to the context
+                        integrated_content = self.generate_with_retry(integration_prompt)
                         context = (f"{context}\n\n--- Additional References ---\n{integrated_content}"
                                  if context else integrated_content)
                     except Exception as e:
@@ -84,8 +114,7 @@ class StoryGenerator:
                     writing_style=writing_style
                 )
                 
-            response = self.model.generate_content(prompt)
-            return response.text
+            return self.generate_with_retry(prompt)
         except Exception as e:
             return f"Error generating story part {part_number}: {str(e)}"
 
